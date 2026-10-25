@@ -42,8 +42,8 @@ App de barra de menu para macOS que **grava e transcreve em tempo real** reuniõ
 ### 1. Baixe o código e as ferramentas
 
 ```bash
-git clone https://github.com/tspineli/gravador-reunioes.git
-cd gravador-reunioes
+git clone https://github.com/tspineli/gravador.git
+cd gravador
 brew install xcodegen
 ```
 
