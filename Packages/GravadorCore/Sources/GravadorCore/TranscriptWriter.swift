@@ -53,7 +53,7 @@ public final class TranscriptWriter {
 
     /// Fecha a transcrição. Como as duas trilhas são transcritas fora de ordem, o markdown final
     /// é reescrito em ordem cronológica a partir do jsonl.
-    public func finish(endedAt: Date, duration: TimeInterval) throws {
+    public func finish(endedAt: Date, duration: TimeInterval, note: String? = nil) throws {
         guard !finished else { return }
         finished = true
         try jsonl.synchronize()
@@ -62,6 +62,7 @@ public final class TranscriptWriter {
         var text = Self.header(title: title, startedAt: startedAt)
         for segment in segments { text += Self.markdownLine(segment) }
         text += "---\n_Fim: \(Self.headerDate.string(from: endedAt)) · duração \(TimeFormatting.clock(duration))_\n"
+        if let note { text += "\n_\(note)_\n" }
         try Data(text.utf8).write(to: folder.appendingPathComponent(Self.markdownName), options: .atomic)
     }
 

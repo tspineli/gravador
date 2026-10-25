@@ -79,7 +79,7 @@ struct SetupView: View {
     private var modelDetail: String {
         if let error = state.lastError, state.installedModels.isEmpty { return error }
         if state.installedModels.isEmpty {
-            return "Rode scripts/fetch-model.sh no Terminal (download único, ~1,5 GB) e importe a pasta baixada."
+            return "Rode scripts/fetch-model.sh no Terminal (download único, ~2,2 GB) e importe as duas pastas baixadas."
         }
         return state.installedModels.joined(separator: ", ")
     }

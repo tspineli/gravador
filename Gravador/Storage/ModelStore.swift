@@ -20,6 +20,16 @@ enum ModelStore {
         return items.filter(isValidModel).map(\.lastPathComponent).sorted()
     }
 
+    /// Tamanho em disco (aproxima a memória que o modelo ocupa quando carregado).
+    static func size(named name: String) -> Int64 {
+        let enumerator = FileManager.default.enumerator(at: folder(named: name), includingPropertiesForKeys: [.fileSizeKey])
+        var total: Int64 = 0
+        while let url = enumerator?.nextObject() as? URL {
+            total += Int64((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        }
+        return total
+    }
+
     static func folder(named name: String) -> URL {
         modelsRoot.appendingPathComponent(name, isDirectory: true)
     }

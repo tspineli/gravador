@@ -8,7 +8,10 @@ enum Preferences {
         static let detectBrowsers = "detectBrowsers"
         static let voiceProcessing = "voiceProcessing"
         static let stopDelay = "stopDelaySeconds"
+        /// Modelo da transcrição ao vivo (nome mantido por compatibilidade).
         static let selectedModel = "selectedModel"
+        /// Modelo da revisão final. Vazio = revisão desligada; ausente = escolher automaticamente.
+        static let refineModel = "refineModel"
         static let notifyOnAutoStart = "notifyOnAutoStart"
         static let microphoneUID = "microphoneUID"
         static func appEnabled(_ app: MeetingApp) -> String { "app.\(app.rawValue).enabled" }
@@ -45,6 +48,11 @@ enum Preferences {
     static var selectedModel: String? {
         get { store.string(forKey: Key.selectedModel) }
         set { store.set(newValue, forKey: Key.selectedModel) }
+    }
+
+    static var refineModel: String? {
+        get { store.string(forKey: Key.refineModel) }
+        set { store.set(newValue, forKey: Key.refineModel) }
     }
 
     static var enabledApps: Set<MeetingApp> {

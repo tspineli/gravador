@@ -43,6 +43,22 @@ final class SpeechSegmenterTests: XCTestCase {
         XCTAssertEqual(chunks.map(\.samples.count).reduce(0, +), 12 * 16_000, accuracy: 960)
     }
 
+    func testLongSpeechCutsAtShortPause() {
+        var seg = SpeechSegmenter()
+        // 19 s de fala, pausa de 0,3 s (curta demais para o corte normal), mais fala.
+        var chunks = seg.append(silence(0.5) + tone(19) + silence(0.3) + tone(3))
+        XCTAssertEqual(chunks.count, 1, "corta na pausa curta depois de 18 s")
+        XCTAssertEqual(chunks[0].end, 19.5, accuracy: 0.3)
+        chunks += seg.flush()
+        XCTAssertEqual(chunks.count, 2)
+    }
+
+    func testShortPauseDoesNotCutBeforeSoftMax() {
+        var seg = SpeechSegmenter()
+        let chunks = seg.append(silence(0.5) + tone(5) + silence(0.3) + tone(3)) + seg.flush()
+        XCTAssertEqual(chunks.count, 1)
+    }
+
     func testTwoUtterances() {
         var seg = SpeechSegmenter()
         var chunks = seg.append(tone(1) + silence(1) + tone(1.5))

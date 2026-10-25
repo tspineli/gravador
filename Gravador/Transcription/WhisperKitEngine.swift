@@ -47,19 +47,56 @@ actor WhisperKitEngine: TranscriptionEngine {
         }
     }
 
-    func transcribe(_ samples: [Float], allowedLanguages: Set<String>) async throws -> TranscriptionOutput? {
-        if whisper == nil { try await load() }
-        guard let whisper else { return nil }
+    func unload() async {
+        guard let whisper else { return }
+        await whisper.unloadModels()
+        self.whisper = nil
+        loading = nil
+        Self.log.info("Modelo liberado da memória")
+    }
 
-        let language: String
-        if allowedLanguages.count == 1, let only = allowedLanguages.first {
-            language = only
-        } else {
-            let detected = try await whisper.detectLangauge(audioArray: samples)
-            language = LanguagePicker.pick(probabilities: detected.langProbs,
-                                           allowed: allowedLanguages.isEmpty ? ["pt", "en", "es"] : allowedLanguages,
-                                           fallback: allowedLanguages.contains(detected.language) ? detected.language : "pt")
+    private func loaded() async throws -> WhisperKit {
+        if whisper == nil { try await load() }
+        guard let whisper else { throw CancellationError() }
+        return whisper
+    }
+
+    func detectLanguage(_ samples: [Float], allowedLanguages: Set<String>) async throws -> String {
+        if allowedLanguages.count == 1, let only = allowedLanguages.first { return only }
+        let detected = try await loaded().detectLangauge(audioArray: samples)
+        return LanguagePicker.pick(probabilities: detected.langProbs,
+                                   allowed: allowedLanguages.isEmpty ? ["pt", "en", "es"] : allowedLanguages,
+                                   fallback: allowedLanguages.contains(detected.language) ? detected.language : "pt")
+    }
+
+    func transcribeTimed(_ samples: [Float], language: String, previousText: String?) async throws -> [TimedText] {
+        let whisper = try await loaded()
+        let prompt = previousText.flatMap { text in whisper.tokenizer?.encode(text: " " + text) }
+        let options = DecodingOptions(
+            task: .transcribe,
+            language: language,
+            temperatureFallbackCount: 3,
+            usePrefillPrompt: true,
+            detectLanguage: false,
+            skipSpecialTokens: true,
+            withoutTimestamps: false,
+            promptTokens: prompt,
+            suppressBlank: true,
+            // O VAD já garante que há fala. Com o limiar padrão, um trecho que começa no meio
+            // de uma frase tem a primeira palavra improvável e é descartado inteiro.
+            firstTokenLogProbThreshold: nil
+        )
+        let results = try await whisper.transcribe(audioArray: samples, decodeOptions: options)
+        return results.flatMap(\.segments).compactMap { segment in
+            TranscriptFilters.clean(segment.text).map {
+                TimedText(start: TimeInterval(segment.start), end: TimeInterval(segment.end), text: $0)
+            }
         }
+    }
+
+    func transcribe(_ samples: [Float], allowedLanguages: Set<String>) async throws -> TranscriptionOutput? {
+        let whisper = try await loaded()
+        let language = try await detectLanguage(samples, allowedLanguages: allowedLanguages)
 
         let options = DecodingOptions(
             task: .transcribe,
@@ -69,7 +106,10 @@ actor WhisperKitEngine: TranscriptionEngine {
             detectLanguage: false,
             skipSpecialTokens: true,
             withoutTimestamps: true,
-            suppressBlank: true
+            suppressBlank: true,
+            // O VAD já garante que há fala. Com o limiar padrão, um trecho que começa no meio
+            // de uma frase tem a primeira palavra improvável e é descartado inteiro.
+            firstTokenLogProbThreshold: nil
         )
         let results = try await whisper.transcribe(audioArray: samples, decodeOptions: options)
         let text = results.map(\.text).joined(separator: " ")

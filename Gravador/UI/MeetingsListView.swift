@@ -36,6 +36,7 @@ struct MeetingsListView: View {
         }
         .onAppear(perform: reload)
         .onChange(of: state.lastSavedFolder) { reload() }
+        .onChange(of: state.lastRefinedFolder) { reload() }
     }
 
     private func reload() {

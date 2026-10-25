@@ -71,6 +71,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             return
         }
+        if let seconds = SelfTest.requestedAppTestSeconds {
+            Task { @MainActor in exit(await SelfTest.runAppFlow(seconds: seconds)) }
+            return
+        }
         MainActor.assumeIsolated { AppState.shared.launch() }
     }
 }

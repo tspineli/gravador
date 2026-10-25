@@ -8,7 +8,7 @@ App de barra de menu para macOS que **grava e transcreve em tempo real** reuniõ
 
 - 🎙️ **Início automático:** detecta quando Zoom, Teams, Meet, Webex ou Slack começam a usar o microfone.
 - ✋ **Início e parada manuais:** sempre disponíveis no menu. Uma parada manual não é desfeita pela detecção automática.
-- 📝 **Transcrição ao vivo:** usa Whisper large-v3 turbo no Neural Engine, com cerca de 1 s por fala, e separa **Eu** (seu microfone) de **Outros** (áudio da reunião).
+- 📝 **Transcrição ao vivo e revisão ao final:** usa Whisper large-v3 turbo no Neural Engine. Ao vivo, cada fala aparece em ~1 s; depois da reunião, a gravação inteira é transcrita de novo com mais contexto. Separa **Eu** (seu microfone) de **Outros** (áudio da reunião).
 - 🌎 **Português, inglês e espanhol:** o idioma é detectado a cada fala, inclusive em reuniões que misturam idiomas.
 - 🔒 **Sem nuvem:** o app roda em sandbox sem permissão de rede, e um script verifica isso.
 
@@ -22,9 +22,10 @@ App de barra de menu para macOS que **grava e transcreve em tempo real** reuniõ
 4. [Como usar](#como-usar)
 5. [Preferências](#preferências)
 6. [Onde ficam as gravações](#onde-ficam-as-gravações)
-7. [Privacidade: como garantir que nada vai para a nuvem](#privacidade-como-garantir-que-nada-vai-para-a-nuvem)
-8. [Solução de problemas](#solução-de-problemas)
-9. [Desenvolvimento](#desenvolvimento)
+7. [Consumo de recursos](#consumo-de-recursos)
+8. [Privacidade: como garantir que nada vai para a nuvem](#privacidade-como-garantir-que-nada-vai-para-a-nuvem)
+9. [Solução de problemas](#solução-de-problemas)
+10. [Desenvolvimento](#desenvolvimento)
 
 ---
 
@@ -35,7 +36,7 @@ App de barra de menu para macOS que **grava e transcreve em tempo real** reuniõ
 | Mac | Apple Silicon (M1 ou mais novo) |
 | macOS | 15 (Sequoia) ou mais novo |
 | Ferramentas | Xcode 16+ e [Homebrew](https://brew.sh) |
-| Espaço | ~1,5 GB para o modelo de transcrição |
+| Espaço | ~2,2 GB para os dois modelos de transcrição, mais ~50 MB por hora de reunião |
 
 ## Instalação
 
@@ -47,16 +48,21 @@ cd gravador
 brew install xcodegen
 ```
 
-### 2. Baixe o modelo de transcrição (uma única vez)
+### 2. Baixe os modelos de transcrição (uma única vez)
 
 ```bash
 scripts/fetch-model.sh
 ```
 
-O script baixa o Whisper large-v3 turbo (~1,5 GB) do Hugging Face para `./models/`. Esse é o **único** download do processo, e ele roda fora do app. O Gravador nunca acessa a internet.
+O script baixa dois modelos do Whisper do Hugging Face para `./models/`:
 
-> Para um modelo menor e mais rápido (com precisão um pouco menor):
-> `scripts/fetch-model.sh ./models openai_whisper-large-v3-v20240930_turbo_632MB`
+- `openai_whisper-large-v3-v20240930_turbo_632MB` (~0,6 GB): **ao vivo**, durante a reunião;
+- `openai_whisper-large-v3-v20240930_turbo` (~1,5 GB): **revisão ao final**.
+
+Esse é o **único** download do processo, e ele roda fora do app. O Gravador nunca acessa a internet.
+
+> Também funciona com um modelo só, usado nas duas etapas. Para baixar só um, passe o nome dele:
+> `scripts/fetch-model.sh ./models openai_whisper-large-v3-v20240930_turbo`
 
 ### 3. Compile e instale
 
@@ -92,13 +98,13 @@ Na primeira vez, abre a janela **Configuração inicial**:
 </p>
 
 1. **Pasta das reuniões:** escolha onde salvar as gravações (sugestão: `Documentos/Gravador Reuniões`).
-2. **Modelo de transcrição:** clique em **Importar…** e selecione `models/openai_whisper-large-v3-v20240930_turbo`. O app copia o modelo para a área dele.
+2. **Modelos de transcrição:** clique em **Importar…** e selecione `models/openai_whisper-large-v3-v20240930_turbo_632MB`. Depois clique em **Outro…** e selecione `models/openai_whisper-large-v3-v20240930_turbo`. O app copia os modelos para a área dele: o menor vira o modelo ao vivo e o maior, o da revisão. Dá para trocar em Preferências › Transcrição. Depois de importar, apague a pasta `models/` para liberar ~2,2 GB.
 3. **Microfone:** clique em **Permitir…** e aceite o pedido do macOS.
 4. **Reuniões no navegador (opcional):** permita "Gravação de Tela" para o início automático de Meet, Teams e Zoom no navegador. A permissão serve **só para ler o título das abas**; nenhuma imagem da tela é capturada.
 
 Na primeira gravação, o macOS pede a permissão de **áudio do sistema**, necessária para gravar a voz dos outros participantes.
 
-> A primeira carga do modelo leva de 1 a 2 minutos, porque o macOS o compila para o seu chip. Depois disso, carrega em cerca de 1 segundo.
+> A primeira carga de cada modelo leva de 1 a 2 minutos, porque o macOS o compila para o seu chip. Por isso, as primeiras falas da primeira reunião aparecem com atraso, mas nada se perde. Depois disso, cada modelo carrega em cerca de 1 segundo.
 
 Dá para reabrir esta janela pelo menu › **Configuração inicial…**.
 
@@ -146,6 +152,15 @@ Clique no ícone da barra de menu:
 
 Menu › **Transcrição ao vivo…** (⌘T) abre a janela do topo desta página. Cada fala aparece de 1 a 3 segundos depois de terminar, com horário, quem falou (**Eu** / **Outros**) e o idioma detectado.
 
+### Revisão ao final
+
+Quando a reunião termina, o app transcreve a gravação **de novo**, em segundo plano. Desta vez ele usa o modelo maior e trechos de até 28 s, com o texto anterior como contexto. Isso corrige palavras cortadas e nomes escritos errado ao vivo (ex.: "Timmy de dados" → "time de dados", "deploy de cesta" → "deploy de sexta").
+
+- O menu mostra **Revisando transcrição… 42%**. Leva de 5 a 12 minutos por hora de reunião.
+- A versão revisada substitui o `transcricao.md`. A versão ao vivo fica guardada como `transcricao-ao-vivo.md`.
+- Se outra reunião começar, a revisão pausa e é retomada depois. Também é retomada se você fechar o app no meio.
+- Para desligar: Preferências › Transcrição › Revisão ao final › **Desligada**.
+
 ### Reuniões gravadas
 
 Menu › **Reuniões gravadas…** lista as reuniões salvas e mostra a transcrição de cada uma:
@@ -192,8 +207,10 @@ Gravador Reuniões/
 └── 2026-10-25 14h30 - Zoom/
     ├── mic.m4a             sua voz
     ├── sistema.m4a         os outros participantes
-    ├── transcricao.md      transcrição legível
-    └── transcricao.jsonl   um trecho por linha (para scripts)
+    ├── transcricao.md      transcrição legível (revisada ao final)
+    ├── transcricao.jsonl   um trecho por linha (para scripts)
+    ├── transcricao-ao-vivo.md      a versão feita durante a reunião
+    └── transcricao-ao-vivo.jsonl
 ```
 
 Exemplo de `transcricao.md`:
@@ -212,6 +229,20 @@ _Fim: 25/10/2026 15:12 · duração 42:10_
 ```
 
 A transcrição é salva **enquanto** a reunião acontece. Se o Mac travar, o que já foi transcrito não se perde.
+
+## Consumo de recursos
+
+Medido num Mac mini M4 com 16 GB:
+
+| | Parado (só monitorando) | Gravando | Revisão ao final |
+|---|---|---|---|
+| Memória | ~45 MB | ~0,8 GB (modelo ao vivo) | ~1,6 GB por alguns minutos |
+| CPU | ~0,1% | ~7% de um núcleo, com picos a cada fala | Neural Engine + ~1 núcleo |
+| Disco | — | ~50 MB por hora | — |
+
+Nenhum modelo fica na memória com o app parado. O modelo ao vivo carrega quando a gravação começa e sai quando ela termina. O da revisão carrega logo depois e também sai ao terminar.
+
+Precisão medida numa reunião sintética de 2,5 min em PT, EN e ES, com ruído e codec de chamada, em taxa de erro por palavra: ao vivo **~1,5–2%**, depois da revisão **~1%**. Áudio real, com pessoas falando ao mesmo tempo, tende a errar mais.
 
 ## Privacidade: como garantir que nada vai para a nuvem
 
@@ -252,7 +283,8 @@ Também dá para gravar uma reunião com o Wi-Fi desligado: tudo funciona igual.
 | Não começa a gravar sozinho no navegador | Sem a permissão de títulos, chega uma notificação: clique em **Gravar**. Para iniciar sem confirmar, permita "Gravação de Tela" em Preferências › Geral. |
 | Não começa a gravar sozinho num app | Veja em Preferências › Privacidade › Diagnóstico qual bundle ID está usando o microfone e confira se o app está ligado em Preferências › Geral. |
 | "Transcrição: nenhum modelo instalado" | Rode `scripts/fetch-model.sh` e importe a pasta em Preferências › Transcrição › **Importar modelo…**. |
-| A primeira transcrição demora | É normal na primeira carga do modelo (1–2 min) e depois de atualizar o macOS. |
+| A primeira transcrição demora | É normal na primeira carga de cada modelo (1–2 min) e depois de atualizar o macOS. |
+| A transcrição mudou depois da reunião | É a revisão ao final. A versão ao vivo está em `transcricao-ao-vivo.md`. |
 | Aparecem falas repetidas como "Eu" | É eco do alto-falante: use fone de ouvido ou ligue o Cancelamento de eco. |
 
 Logs detalhados (inclusive quais apps usam o microfone):

@@ -21,6 +21,10 @@ public struct SpeechSegmenter: Sendable {
         public var silenceToCut: TimeInterval = 0.6
         /// Trechos com menos fala que isso são descartados (cliques, ruído).
         public var minSpeech: TimeInterval = 0.3
+        /// Trecho longo: a partir daqui, uma pausa curta já encerra o trecho,
+        /// para o corte cair entre palavras e não no meio de uma.
+        public var softMaxChunk: TimeInterval = 18
+        public var shortPauseToCut: TimeInterval = 0.2
         /// Corte forçado para não atrasar demais a transcrição.
         public var maxChunk: TimeInterval = 25
         /// Áudio mantido antes do início detectado da fala.
@@ -53,6 +57,8 @@ public struct SpeechSegmenter: Sendable {
     }
 
     private var silenceFramesToCut: Int { Int((config.silenceToCut / config.frameDuration).rounded()) }
+    private var shortPauseFramesToCut: Int { max(1, Int((config.shortPauseToCut / config.frameDuration).rounded())) }
+    private var softMaxChunkSamples: Int { Int(config.softMaxChunk * config.sampleRate) }
     private var minSpeechFrames: Int { Int((config.minSpeech / config.frameDuration).rounded()) }
     private var maxChunkSamples: Int { Int(config.maxChunk * config.sampleRate) }
     private var preRollSamples: Int { Int(config.preRoll * config.sampleRate) }
@@ -124,6 +130,9 @@ public struct SpeechSegmenter: Sendable {
         }
 
         if silentFrames >= silenceFramesToCut {
+            return finishChunk()
+        }
+        if chunk.count >= softMaxChunkSamples, silentFrames >= shortPauseFramesToCut {
             return finishChunk()
         }
         if chunk.count >= maxChunkSamples {

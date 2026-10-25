@@ -24,7 +24,7 @@ enum Screenshots {
             InputDevice(id: 2, uid: "demo.airpods", name: "AirPods Pro"),
         ]
         let startedAt = Date().addingTimeInterval(-(12 * 60 + 34))
-        let models = ["openai_whisper-large-v3-v20240930_turbo"]
+        let models = ["openai_whisper-large-v3-v20240930_turbo", "openai_whisper-large-v3-v20240930_turbo_632MB"]
 
         state.applyDemo(status: .recording(label: "Zoom", startedAt: startedAt), segments: demoSegments,
                         detected: .zoom, suppressed: false, models: models,
@@ -159,7 +159,7 @@ private struct MenuMock: View {
             rows = [.info("● Gravando Zoom — 12:34"), .item("Parar e salvar", shortcut: "⌘S", highlighted: true),
                     .item("Parar e descartar")]
         case .idle:
-            rows = [.info("Teams detectado"), .item("Iniciar gravação", shortcut: "⌘R", highlighted: true)]
+            rows = [.info("Revisando transcrição… 42%"), .info("Teams detectado"), .item("Iniciar gravação", shortcut: "⌘R", highlighted: true)]
         }
         rows += [.separator, .item("Transcrição ao vivo…", shortcut: "⌘T"), .item("Reuniões gravadas…"),
                  .item("Abrir última reunião"), .separator, .info("Transcrição local: pronta"), .separator,

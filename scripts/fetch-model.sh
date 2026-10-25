@@ -2,16 +2,22 @@
 # Baixa UMA VEZ um modelo do WhisperKit (Core ML) + tokenizer, fora do app.
 # Depois, no Gravador: Preferências › Transcrição › Importar modelo… e escolha a pasta criada.
 #
-# Uso: scripts/fetch-model.sh [destino] [variante]
+# Uso: scripts/fetch-model.sh [destino] [variante...]
 #   destino  (padrão: ./models)
-#   variante (padrão: openai_whisper-large-v3-v20240930_turbo)
-#            alternativas menores: openai_whisper-large-v3-v20240930_turbo_632MB, openai_whisper-small
+#   variante (padrão: os dois recomendados)
+#            openai_whisper-large-v3-v20240930_turbo_632MB  ao vivo (~0,6 GB)
+#            openai_whisper-large-v3-v20240930_turbo        revisão ao final (~1,5 GB)
 set -euo pipefail
 
 DEST="${1:-$(cd "$(dirname "$0")/.." && pwd)/models}"
-VARIANT="${2:-openai_whisper-large-v3-v20240930_turbo}"
+shift || true
+VARIANTS=("$@")
+[ ${#VARIANTS[@]} -gt 0 ] || VARIANTS=(openai_whisper-large-v3-v20240930_turbo_632MB openai_whisper-large-v3-v20240930_turbo)
 REPO="argmaxinc/whisperkit-coreml"
 HF="https://huggingface.co"
+
+fetch() {
+VARIANT="$1"
 
 case "$VARIANT" in
   *large-v3*) TOKENIZER_REPO="openai/whisper-large-v3" ;;
@@ -56,5 +62,8 @@ for required in AudioEncoder.mlmodelc TextDecoder.mlmodelc MelSpectrogram.mlmode
 done
 
 du -sh "$OUT"
+}
+
+for variant in "${VARIANTS[@]}"; do fetch "$variant"; done
 echo
-echo "Pronto. No Gravador: Preferências › Transcrição › Importar modelo… → $OUT"
+echo "Pronto. No Gravador: Preferências › Transcrição › Importar modelo… (uma vez para cada pasta em $DEST)"

@@ -17,6 +17,7 @@ final class MeetingRecorder {
     let folder: URL
     let label: String
     let startedAt = Date()
+    private(set) var endedAt: Date?
 
     private let options: Options
     private let engine: (any TranscriptionEngine)?
@@ -94,6 +95,7 @@ final class MeetingRecorder {
         await transcriber?.drain()
         for pipeline in pipelines.values { _ = await pipeline.finishFile() }
         let ended = Date()
+        endedAt = ended
         try? writer?.finish(endedAt: ended, duration: ended.timeIntervalSince(startedAt))
         writer = nil
         Self.log.info("Gravação salva em \(self.folder.lastPathComponent, privacy: .public)")

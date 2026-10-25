@@ -18,6 +18,9 @@ struct MenuContent: View {
         case .finishing:
             Text("Finalizando transcrição…")
         case .idle:
+            if let refinement = state.refinement {
+                Text("Revisando transcrição… \(Int(refinement.progress * 100))%")
+            }
             if let meeting = state.detectedMeeting {
                 Text(state.isSuppressed ? "\(meeting.displayName) em andamento (pausado por você)" : "\(meeting.displayName) detectado")
             }
@@ -53,7 +56,7 @@ struct MenuContent: View {
     @ViewBuilder
     private var modelStatus: some View {
         switch state.modelState {
-        case .ready: Text("Transcrição local: pronta")
+        case .ready, .standby: Text("Transcrição local: pronta")
         case .loading: Text("Transcrição local: carregando modelo…")
         case .missing: Text("Transcrição: nenhum modelo instalado")
         case .failed(let message): Text("Transcrição: erro — \(message)")

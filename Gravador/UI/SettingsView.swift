@@ -106,6 +106,7 @@ private struct TranscriptionSettings: View {
     @EnvironmentObject private var state: AppState
     @AppStorage(Preferences.Key.voiceProcessing) private var voiceProcessing = false
     @AppStorage(Preferences.Key.selectedModel) private var selectedModel = ""
+    @AppStorage(Preferences.Key.refineModel) private var refineModel = ""
     @AppStorage(Preferences.Key.microphoneUID) private var microphoneUID = ""
     @State private var inputDevices: [InputDevice] = []
 
@@ -116,10 +117,17 @@ private struct TranscriptionSettings: View {
                     Text("Nenhum modelo instalado. Rode `scripts/fetch-model.sh` no Terminal e importe a pasta baixada.")
                         .foregroundStyle(.secondary)
                 } else {
-                    Picker("Modelo", selection: Binding(
+                    Picker("Ao vivo", selection: Binding(
                         get: { selectedModel },
                         set: { state.selectModel($0) }
                     )) {
+                        ForEach(state.installedModels, id: \.self) { Text($0).tag($0) }
+                    }
+                    Picker("Revisão ao final", selection: Binding(
+                        get: { refineModel },
+                        set: { state.selectRefineModel($0) }
+                    )) {
+                        Text("Desligada").tag("")
                         ForEach(state.installedModels, id: \.self) { Text($0).tag($0) }
                     }
                 }
@@ -135,6 +143,8 @@ private struct TranscriptionSettings: View {
                 }
             } header: {
                 Text("Modelo (Whisper, roda no próprio Mac)")
+            } footer: {
+                FooterText("Os modelos só ficam na memória enquanto são usados: o ao vivo durante a gravação e o da revisão por alguns minutos depois dela. A revisão transcreve de novo a gravação inteira, com mais contexto, e substitui a transcrição ao vivo (que fica guardada como transcricao-ao-vivo.md).")
             }
 
             Section {
@@ -166,7 +176,13 @@ private struct TranscriptionSettings: View {
     @ViewBuilder
     private var modelStatus: some View {
         switch state.modelState {
-        case .ready: Label("Pronto", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+        case .ready: Label("Carregado", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+        case .standby:
+            if let refinement = state.refinement {
+                Label("Revisando a última reunião… \(Int(refinement.progress * 100))%", systemImage: "text.badge.checkmark")
+            } else {
+                Label("Pronto (carrega ao gravar)", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+            }
         case .loading: Label("Carregando (a 1ª vez pode levar minutos)…", systemImage: "hourglass")
         case .missing: Label("Sem modelo", systemImage: "xmark.circle").foregroundStyle(.secondary)
         case .failed(let message): Label(message, systemImage: "exclamationmark.triangle.fill").foregroundStyle(.red)
